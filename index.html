@@ -258,6 +258,7 @@
                 <option value="Khác">Khác</option>
             </select>
             <input type="text" id="customSource" placeholder="Nhập tên nguồn hàng..." autocomplete="off" style="display:none;">
+            <input type="text" id="productNote" placeholder="Ghi chú..." autocomplete="off">
         </div>
         <div class="form-actions">
             <button class="btn-add" id="btnAdd" onclick="addProduct()">+ Nhập kho</button>
@@ -276,13 +277,15 @@
             <thead>
                 <tr>
                     <th>STT</th>
-                    <th>Tên sản phẩm</th>
+                    <th>Tên SP</th>
                     <th>Mã SP</th>
-                    <th>Nguồn hàng</th>
-                    <th>Tồn kho</th>
-                    <th>Đơn vị</th>
+                    <th>Nguồn</th>
+                    <th>SL</th>
+                    <th>ĐVT</th>
                     <th>Đơn giá</th>
-                    <th>Thành tiền</th>
+                    <th>Ngày</th>
+                    <th>Ghi chú</th>
+                    <th>TT</th>
                     <th></th>
                 </tr>
             </thead>
@@ -342,6 +345,7 @@
                     <th>Đơn vị</th>
                     <th>Đơn giá</th>
                     <th>Lý do</th>
+                    <th>Ghi chú</th>
                     <th>Thời gian</th>
                 </tr>
             </thead>
@@ -485,6 +489,7 @@
         const unit = document.getElementById('unit').value;
         const price = parseFloat(document.getElementById('price').value) || 0;
         const source = getSource();
+        const note = document.getElementById('productNote').value.trim();
 
         if (!name) { alert('Vui lòng nhập tên sản phẩm!'); return; }
         if (qty < 1) { alert('Số lượng phải >= 1!'); return; }
@@ -494,10 +499,11 @@
             existing.qty += qty;
             if (price) existing.price = price;
             if (source) existing.source = source;
-            addHistory('Nhập', existing.name, existing.code, qty, existing.unit, price, 'Nhập kho', source);
+            existing.note = note || existing.note;
+            addHistory('Nhập', existing.name, existing.code, qty, existing.unit, price, 'Nhập kho', source, note);
         } else {
-            products.push({ name, code, qty, unit, price, source });
-            addHistory('Nhập', name, code, qty, unit, price, 'Nhập kho', source);
+            products.push({ name, code, qty, unit, price, source, note, createdAt: new Date().toLocaleDateString('vi-VN') });
+            addHistory('Nhập', name, code, qty, unit, price, 'Nhập kho', source, note);
         }
         saveProducts();
         renderTable();
@@ -513,6 +519,7 @@
         document.getElementById('unit').value = p.unit;
         document.getElementById('price').value = p.price || '';
         setSource(p.source || '');
+        document.getElementById('productNote').value = p.note || '';
         document.getElementById('btnAdd').style.display = 'none';
         document.getElementById('btnUpdate').style.display = '';
         document.getElementById('btnCancel').style.display = '';
@@ -530,6 +537,7 @@
         const unit = document.getElementById('unit').value;
         const price = parseFloat(document.getElementById('price').value) || 0;
         const source = getSource();
+        const note = document.getElementById('productNote').value.trim();
 
         if (!name) { alert('Vui lòng nhập tên sản phẩm!'); return; }
         if (qty < 1) { alert('Số lượng phải >= 1!'); return; }
@@ -541,6 +549,7 @@
         p.unit = unit;
         p.price = price;
         p.source = source;
+        p.note = note;
 
         saveProducts();
         renderTable();
@@ -584,6 +593,7 @@
         document.getElementById('source').value = '';
         document.getElementById('customSource').value = '';
         document.getElementById('customSource').style.display = 'none';
+        document.getElementById('productNote').value = '';
         document.getElementById('productName').focus();
     }
 
@@ -711,7 +721,7 @@
             if (qty <= 0) { errors.push(`${p.name}: số lượng không hợp lệ`); return; }
             if (qty > p.qty) { errors.push(`${p.name}: tồn ${p.qty}, không đủ ${qty}`); return; }
             p.qty -= qty;
-            addHistory('Xuất', p.name, p.code, qty, p.unit, p.price, reason, p.source);
+            addHistory('Xuất', p.name, p.code, qty, p.unit, p.price, reason, p.source, p.note);
             success.push(`${p.name}: ${qty} ${p.unit}`);
         });
 
@@ -729,7 +739,7 @@
     }
 
     // ---------- LICH SU ----------
-    function addHistory(type, name, code, qty, unit, price, reason, source) {
+    function addHistory(type, name, code, qty, unit, price, reason, source, note) {
         history.unshift({
             type,
             name,
@@ -739,6 +749,7 @@
             price: price || 0,
             reason,
             source: source || '',
+            note: note || '',
             time: new Date().toLocaleString('vi-VN', { hour12: false })
         });
         localStorage.setItem('history', JSON.stringify(history));
@@ -756,7 +767,7 @@
         const pageItems = history.slice(start, start + HISTORY_PER_PAGE);
 
         if (history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">Chưa có lịch sử</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">Chưa có lịch sử</td></tr>';
             pagination.innerHTML = '';
             return;
         }
@@ -775,6 +786,7 @@
                 <td>${h.unit}</td>
                 <td>${h.price ? formatCurrency(h.price) : '-'}</td>
                 <td>${h.reason || '-'}</td>
+                <td>${h.note || '-'}</td>
                 <td style="font-size:12px;color:#888;">${h.time}</td>
             </tr>`;
         });
@@ -836,7 +848,7 @@
                     } else {
                         products.push(p);
                     }
-                    addHistory('Nhập', p.name, p.code, p.qty, p.unit, p.price, 'Import CSV', p.source);
+                    addHistory('Nhập', p.name, p.code, p.qty, p.unit, p.price, 'Import CSV', p.source, p.note);
                 });
                 saveProducts();
                 renderTable();
@@ -877,6 +889,8 @@
                             existing.qty += p.qty || 0;
                             if (p.price) existing.price = p.price;
                             if (p.source) existing.source = p.source;
+                            if (p.note) existing.note = p.note;
+                            if (!existing.createdAt && p.createdAt) existing.createdAt = p.createdAt;
                         } else {
                             products.push(p);
                         }
@@ -914,7 +928,7 @@
     function renderTable() {
         const tbody = document.getElementById('productBody');
         if (products.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Kho trống</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="empty-msg">Kho trống</td></tr>';
             document.getElementById('summary').textContent = 'Tổng: 0 sản phẩm | Tồn: 0 | Tổng tiền: 0 VNĐ';
             return;
         }
@@ -935,6 +949,8 @@
                 <td class="${lowClass}">${p.qty}</td>
                 <td>${p.unit}</td>
                 <td>${p.price ? formatCurrency(p.price) : '-'}</td>
+                <td style="font-size:12px;white-space:nowrap;">${p.createdAt || '-'}</td>
+                <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(p.note || '').replace(/"/g,'&quot;')}">${p.note || '-'}</td>
                 <td>${formatCurrency(amount)}</td>
                 <td><button class="delete-btn" onclick="event.stopPropagation();deleteProduct(${i})">✕</button></td>
             </tr>`;
@@ -948,16 +964,16 @@
     function exportInventory() {
         if (products.length === 0) { alert('Không có dữ liệu!'); return; }
         const BOM = '\uFEFF';
-        const headers = ['STT', 'Tên sản phẩm', 'Mã SP', 'Nguồn hàng', 'Tồn kho', 'Đơn vị', 'Đơn giá', 'Thành tiền'];
-        const rows = products.map((p, i) => [i + 1, p.name, p.code || '', p.source || '', p.qty, p.unit, p.price || 0, p.qty * p.price].join('\t'));
+        const headers = ['STT', 'Tên sản phẩm', 'Mã SP', 'Nguồn hàng', 'Tồn kho', 'Đơn vị', 'Đơn giá', 'Ngày', 'Ghi chú', 'Thành tiền'];
+        const rows = products.map((p, i) => [i + 1, p.name, p.code || '', p.source || '', p.qty, p.unit, p.price || 0, p.createdAt || '', p.note || '', p.qty * p.price].join('\t'));
         downloadCSV(BOM + [headers.join('\t'), ...rows].join('\r\n'), 'ton-kho.csv');
     }
 
     function exportHistory() {
         if (history.length === 0) { alert('Không có dữ liệu!'); return; }
         const BOM = '\uFEFF';
-        const headers = ['STT', 'Loại', 'Tên sản phẩm', 'Mã SP', 'Nguồn hàng', 'Số lượng', 'Đơn vị', 'Đơn giá', 'Lý do', 'Thời gian'];
-        const rows = history.map((h, i) => [i + 1, h.type, h.name, h.code || '', h.source || '', h.type === 'Xuất' ? '-' + h.qty : '+' + h.qty, h.unit, h.price || 0, h.reason || '', h.time].join('\t'));
+        const headers = ['STT', 'Loại', 'Tên sản phẩm', 'Mã SP', 'Nguồn hàng', 'Số lượng', 'Đơn vị', 'Đơn giá', 'Lý do', 'Ghi chú', 'Thời gian'];
+        const rows = history.map((h, i) => [i + 1, h.type, h.name, h.code || '', h.source || '', h.type === 'Xuất' ? '-' + h.qty : '+' + h.qty, h.unit, h.price || 0, h.reason || '', h.note || '', h.time].join('\t'));
         downloadCSV(BOM + [headers.join('\t'), ...rows].join('\r\n'), 'lich-su-kho.csv');
     }
 
