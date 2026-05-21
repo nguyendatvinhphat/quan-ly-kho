@@ -352,15 +352,19 @@
 
     <!-- TAB DONG BO -->
     <div id="tab-sync" class="tab-content">
-        <p style="color:#888;font-size:13px;margin-bottom:12px;">Dữ liệu tự động đồng bộ giữa các máy qua server trung gian.</p>
+        <p style="color:#888;font-size:13px;margin-bottom:12px;">Đồng bộ qua GitHub — dữ liệu lưu trong repo <strong>data.json</strong>, mở được bằng Excel.</p>
+        <div style="background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:14px;margin-bottom:16px;font-size:13px;">
+            <strong>1 lần duy nhất:</strong><br>
+            Vào <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub Tokens</a> → Generate new token → chọn repo <strong>quan-ly-kho</strong> → Permissions <strong>Contents: Read and write</strong> → Tạo → copy token dán vào ô dưới.
+        </div>
         <div class="form-row">
-            <input type="text" id="syncServerUrl" placeholder="Server URL (VD: https://quan-ly-kho-server.onrender.com)" autocomplete="off">
-            <input type="text" id="syncRoom" placeholder="Mã phòng (tự động sinh nếu để trống)" autocomplete="off">
+            <input type="password" id="syncToken" placeholder="Dán GitHub Token vào đây" autocomplete="off">
         </div>
         <div class="form-actions">
-            <button class="btn-add" onclick="saveSyncServer()" style="background:#13c2c2;">Lưu kết nối</button>
-            <button class="btn-export-kho" onclick="testSyncServer()">Kiểm tra kết nối</button>
-            <button class="btn-clear" onclick="clearSyncServer()">Ngắt kết nối</button>
+            <button class="btn-add" onclick="saveGitHubSync()" style="background:#13c2c2;">Lưu & Kết nối</button>
+            <button class="btn-export-excel" onclick="syncPush()">Đẩy lên GitHub</button>
+            <button class="btn-add" onclick="syncPull()" style="background:#722ed1;">Kéo từ GitHub</button>
+            <button class="btn-clear" onclick="clearGitHubSync()">Ngắt</button>
         </div>
         <div id="syncStatus" style="margin-top:8px;padding:10px 14px;border-radius:6px;font-size:14px;display:none;"></div>
         <div id="syncAutoStatus" style="margin-top:8px;font-size:13px;color:#888;"></div>
@@ -425,40 +429,7 @@
         }
     }
 
-    // ---------- DONG BO ----------
-    function loadSyncServer() {
-        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
-        if (cfg.url) document.getElementById('syncServerUrl').value = cfg.url;
-        if (cfg.room) document.getElementById('syncRoom').value = cfg.room;
-        return cfg;
-    }
-    function getSyncServer() {
-        let url = document.getElementById('syncServerUrl').value.trim().replace(/\/+$/, '');
-        let room = document.getElementById('syncRoom').value.trim();
-        if (!room) {
-            room = localStorage.getItem('syncRoomId');
-            if (!room) {
-                room = Math.random().toString(36).slice(2, 10);
-                localStorage.setItem('syncRoomId', room);
-            }
-            document.getElementById('syncRoom').value = room;
-        }
-        return { url, room };
-    }
-    function saveSyncServer() {
-        const cfg = getSyncServer();
-        if (!cfg.url) { showSyncStatus('Vui lòng nhập Server URL!', 'red'); return; }
-        localStorage.setItem('syncServer', JSON.stringify(cfg));
-        showSyncStatus('Đã lưu kết nối! Dùng mã phòng này cho các máy khác: <strong>' + cfg.room + '</strong>', 'green');
-        updateSyncStatus();
-    }
-    function clearSyncServer() {
-        localStorage.removeItem('syncServer');
-        document.getElementById('syncServerUrl').value = '';
-        document.getElementById('syncRoom').value = '';
-        showSyncStatus('Đã ngắt kết nối.', 'orange');
-        updateSyncStatus();
-    }
+    // ---------- DONG BO (GitHub API) ----------
     function showSyncStatus(msg, color) {
         const el = document.getElementById('syncStatus');
         el.style.display = '';
@@ -466,88 +437,129 @@
         el.style.border = '1px solid ' + (color === 'green' ? '#b7eb8f' : color === 'red' ? '#ffccc7' : '#ffe58f');
         el.innerHTML = msg;
     }
-    function updateSyncStatus() {
-        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
+    function updateSyncStatusUI() {
+        const token = localStorage.getItem('gh_token') || '';
         const el = document.getElementById('syncAutoStatus');
-        if (cfg.url) {
-            const room = cfg.room || localStorage.getItem('syncRoomId') || '?';
-            el.innerHTML = '✓ Đã kết nối server. Mã phòng: <strong>' + room + '</strong> (dùng mã này ở các máy khác). Dữ liệu tự động đồng bộ.';
+        if (token) {
+            el.innerHTML = '✓ Đã kết nối GitHub. Dữ liệu tự động đồng bộ qua file <strong>data.json</strong> trong repo.';
             el.style.color = '#52c41a';
         } else {
-            el.innerHTML = '○ Chưa kết nối server. Nhập Server URL và ấn "Lưu kết nối".';
+            el.innerHTML = '○ Chưa kết nối. Tạo token và ấn "Lưu & Kết nối".';
             el.style.color = '#888';
         }
     }
 
-    async function syncApi(method, data) {
-        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
-        if (!cfg.url) throw new Error('Chưa kết nối server');
-        const room = cfg.room || localStorage.getItem('syncRoomId');
-        if (!room) throw new Error('Chưa có mã phòng');
-        const url = cfg.url + '/api/data/' + encodeURIComponent(room);
+    function getGitHubToken() {
+        return document.getElementById('syncToken').value.trim() || localStorage.getItem('gh_token') || '';
+    }
+
+    function saveGitHubSync() {
+        const token = document.getElementById('syncToken').value.trim();
+        if (!token) { showSyncStatus('Vui lòng nhập token!', 'red'); return; }
+        localStorage.setItem('gh_token', token);
+        showSyncStatus('Đã lưu token! Đang kiểm tra...', 'orange');
+        testGitHubConnection(token);
+    }
+
+    function clearGitHubSync() {
+        localStorage.removeItem('gh_token');
+        document.getElementById('syncToken').value = '';
+        showSyncStatus('Đã ngắt kết nối GitHub.', 'orange');
+        updateSyncStatusUI();
+    }
+
+    async function gitHubRequest(method, body) {
+        const token = getGitHubToken();
+        if (!token) throw new Error('Chưa có token');
+        const url = 'https://api.github.com/repos/nguyendatvinhphat/quan-ly-kho/contents/data.json';
         const res = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
-            body: data ? JSON.stringify(data) : undefined
+            headers: {
+                Authorization: 'Bearer ' + token,
+                Accept: 'application/vnd.github+json',
+                'Content-Type': 'application/json'
+            },
+            body: body ? JSON.stringify(body) : undefined
         });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(err.message || 'HTTP ' + res.status);
+        }
         return res.json();
     }
 
-    async function testSyncServer() {
-        const cfg = getSyncServer();
-        if (!cfg.url) { showSyncStatus('Vui lòng nhập Server URL!', 'red'); return; }
-        localStorage.setItem('syncServer', JSON.stringify(cfg));
-        showSyncStatus('Đang kiểm tra kết nối...', 'orange');
+    async function testGitHubConnection(token) {
         try {
-            const res = await fetch(cfg.url + '/health');
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            showSyncStatus('Kết nối server thành công! ✓ Mã phòng: <strong>' + cfg.room + '</strong>', 'green');
+            await gitHubRequest('GET');
+            showSyncStatus('Kết nối GitHub thành công! ✓', 'green');
         } catch (e) {
-            showSyncStatus('Lỗi kết nối: ' + e.message, 'red');
+            if (e.message.includes('404')) {
+                showSyncStatus('Kết nối OK! File data.json sẽ được tạo khi đẩy dữ liệu.', 'green');
+            } else {
+                showSyncStatus('Lỗi: ' + e.message, 'red');
+            }
         }
-        updateSyncStatus();
+        updateSyncStatusUI();
     }
 
+    async function syncPush() {
+        showSyncStatus('Đang đẩy lên GitHub...', 'orange');
+        try {
+            const content = JSON.stringify({ products, history, updatedAt: new Date().toISOString() }, null, 2);
+            const encoded = btoa(unescape(encodeURIComponent(content)));
+            let sha = null;
+            try { sha = (await gitHubRequest('GET')).sha; } catch (e) {}
+            await gitHubRequest('PUT', { message: 'Sync ' + new Date().toLocaleString('vi-VN'), content: encoded, sha });
+            showSyncStatus('✓ Đã đẩy lên GitHub! (<strong>' + products.length + ' sản phẩm</strong>, ' + history.length + ' lịch sử)', 'green');
+        } catch (e) {
+            showSyncStatus('Lỗi: ' + e.message, 'red');
+        }
+    }
+
+    async function syncPull() {
+        showSyncStatus('Đang kéo từ GitHub...', 'orange');
+        try {
+            const data = await gitHubRequest('GET');
+            const decoded = decodeURIComponent(escape(atob(data.content)));
+            const json = JSON.parse(decoded);
+            let msg = [];
+            if (json.products) { products = json.products; saveProducts(); msg.push(products.length + ' sản phẩm'); }
+            if (json.history) { history = json.history; localStorage.setItem('history', JSON.stringify(history)); msg.push(history.length + ' lịch sử'); }
+            renderTable(); renderExportList(); renderHistory();
+            showSyncStatus('✓ Đã kéo từ GitHub! (' + msg.join(', ') + ')', 'green');
+        } catch (e) {
+            showSyncStatus('Lỗi: ' + e.message, 'red');
+        }
+    }
+
+    // Auto-sync debounced
     let syncTimer = null;
-    let syncQueue = 0;
     function scheduleSync() {
-        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
-        if (!cfg.url) return;
-        syncQueue++;
+        if (!localStorage.getItem('gh_token')) return;
         if (syncTimer) clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
             syncTimer = null;
-            if (syncQueue > 0) {
-                syncQueue = 0;
-                try {
-                    await syncApi('POST', { products, history });
-                } catch (e) { /* silent */ }
-            }
-        }, 4000);
-    }
-    async function syncPullFromServer() {
-        try {
-            const data = await syncApi('GET');
-            if (!data) return;
-            if (data.products) products = data.products;
-            if (data.history) history = data.history;
-            saveProducts();
-            localStorage.setItem('history', JSON.stringify(history));
-            renderTable();
-            renderExportList();
-            renderHistory();
-        } catch (e) { /* silent */ }
+            try {
+                const content = JSON.stringify({ products, history, updatedAt: new Date().toISOString() }, null, 2);
+                const encoded = btoa(unescape(encodeURIComponent(content)));
+                let sha = null;
+                try { sha = (await gitHubRequest('GET')).sha; } catch (e) {}
+                await gitHubRequest('PUT', { message: 'Auto sync', content: encoded, sha });
+            } catch (e) {}
+        }, 5000);
     }
 
-    // Auto pull on page load if configured
-    setTimeout(() => {
-        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
-        if (cfg.url) syncPullFromServer();
-    }, 500);
-
-    loadSyncServer();
-    updateSyncStatus();
+    // Load saved token & auto-pull on startup
+    (function() {
+        const saved = localStorage.getItem('gh_token') || '';
+        if (saved) document.getElementById('syncToken').value = saved;
+        updateSyncStatusUI();
+        if (saved) {
+            setTimeout(async () => {
+                try { await syncPull(); } catch (e) {}
+            }, 800);
+        }
+    })();
 
     // ---------- NHAP KHO ----------
     function addProduct() {
