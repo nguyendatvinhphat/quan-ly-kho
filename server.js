@@ -11,8 +11,7 @@ app.get('/api/data/:room', (req, res) => {
   const file = path.join(DATA_DIR, 'data.json');
   let store = {};
   try { store = JSON.parse(fs.readFileSync(file, 'utf-8')); } catch (e) {}
-  const data = store[req.params.room] || { products: [], history: [] };
-  res.json(data);
+  res.json(store[req.params.room] || { products: [], history: [] });
 });
 
 app.post('/api/data/:room', (req, res) => {

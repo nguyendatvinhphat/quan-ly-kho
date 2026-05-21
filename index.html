@@ -352,19 +352,14 @@
 
     <!-- TAB DONG BO -->
     <div id="tab-sync" class="tab-content">
-        <p style="color:#888;font-size:13px;margin-bottom:12px;">Đồng bộ qua GitHub — dữ liệu lưu trong repo <strong>data.json</strong>, mở được bằng Excel.</p>
-        <div style="background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;padding:14px;margin-bottom:16px;font-size:13px;">
-            <strong>1 lần duy nhất:</strong><br>
-            Vào <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub Tokens</a> → Generate new token → chọn repo <strong>quan-ly-kho</strong> → Permissions <strong>Contents: Read and write</strong> → Tạo → copy token dán vào ô dưới.
-        </div>
+        <p style="color:#888;font-size:13px;margin-bottom:12px;">Đồng bộ qua server — tất cả thiết bị dùng chung <strong>mã phòng</strong> là tự động sync.</p>
         <div class="form-row">
-            <input type="password" id="syncToken" placeholder="Dán GitHub Token vào đây" autocomplete="off">
+            <input type="text" id="syncServerUrl" placeholder="Server URL (đã có sẵn nếu deploy Render thành công)" value="https://quan-ly-kho-server.onrender.com" autocomplete="off">
+            <input type="text" id="syncRoom" placeholder="Mã phòng (tự động)" autocomplete="off" readonly style="background:#f5f5f5;">
         </div>
         <div class="form-actions">
-            <button class="btn-add" onclick="saveGitHubSync()" style="background:#13c2c2;">Lưu & Kết nối</button>
-            <button class="btn-export-excel" onclick="syncPush()">Đẩy lên GitHub</button>
-            <button class="btn-add" onclick="syncPull()" style="background:#722ed1;">Kéo từ GitHub</button>
-            <button class="btn-clear" onclick="clearGitHubSync()">Ngắt</button>
+            <button class="btn-add" onclick="saveSyncServer()" style="background:#13c2c2;">Kết nối & Đồng bộ</button>
+            <button class="btn-clear" onclick="clearSyncServer()">Ngắt</button>
         </div>
         <div id="syncStatus" style="margin-top:8px;padding:10px 14px;border-radius:6px;font-size:14px;display:none;"></div>
         <div id="syncAutoStatus" style="margin-top:8px;font-size:13px;color:#888;"></div>
@@ -429,7 +424,14 @@
         }
     }
 
-    // ---------- DONG BO (GitHub API) ----------
+    // ---------- DONG BO (Server API) ----------
+    let SYNC_SERVER = localStorage.getItem('syncServerUrl') || 'https://quan-ly-kho-server.onrender.com';
+    let SYNC_ROOM = localStorage.getItem('syncRoomId');
+    if (!SYNC_ROOM) {
+        SYNC_ROOM = Math.random().toString(36).slice(2, 10);
+        localStorage.setItem('syncRoomId', SYNC_ROOM);
+    }
+
     function showSyncStatus(msg, color) {
         const el = document.getElementById('syncStatus');
         el.style.display = '';
@@ -438,127 +440,99 @@
         el.innerHTML = msg;
     }
     function updateSyncStatusUI() {
-        const token = localStorage.getItem('gh_token') || '';
         const el = document.getElementById('syncAutoStatus');
-        if (token) {
-            el.innerHTML = '✓ Đã kết nối GitHub. Dữ liệu tự động đồng bộ qua file <strong>data.json</strong> trong repo.';
+        const url = localStorage.getItem('syncServerUrl');
+        if (url) {
+            const rid = localStorage.getItem('syncRoomId') || '?';
+            el.innerHTML = '✓ Đã kết nối server. Mã phòng: <strong>' + rid + '</strong> (dùng mã này ở máy khác). Dữ liệu tự động đồng bộ.';
             el.style.color = '#52c41a';
         } else {
-            el.innerHTML = '○ Chưa kết nối. Tạo token và ấn "Lưu & Kết nối".';
+            el.innerHTML = '○ Chưa có server URL. Nhập URL rồi ấn "Lưu".<br><small>Mã phòng tự động: <strong>' + SYNC_ROOM + '</strong></small>';
             el.style.color = '#888';
         }
     }
 
-    function getGitHubToken() {
-        return document.getElementById('syncToken').value.trim() || localStorage.getItem('gh_token') || '';
-    }
-
-    function saveGitHubSync() {
-        const token = document.getElementById('syncToken').value.trim();
-        if (!token) { showSyncStatus('Vui lòng nhập token!', 'red'); return; }
-        localStorage.setItem('gh_token', token);
-        showSyncStatus('Đã lưu token! Đang kiểm tra...', 'orange');
-        testGitHubConnection(token);
-    }
-
-    function clearGitHubSync() {
-        localStorage.removeItem('gh_token');
-        document.getElementById('syncToken').value = '';
-        showSyncStatus('Đã ngắt kết nối GitHub.', 'orange');
-        updateSyncStatusUI();
-    }
-
-    async function gitHubRequest(method, body) {
-        const token = getGitHubToken();
-        if (!token) throw new Error('Chưa có token');
-        const url = 'https://api.github.com/repos/nguyendatvinhphat/quan-ly-kho/contents/data.json';
-        const res = await fetch(url, {
+    async function syncApi(method, data) {
+        const url = localStorage.getItem('syncServerUrl');
+        if (!url) throw new Error('Chưa cấu hình server');
+        const room = localStorage.getItem('syncRoomId');
+        if (!room) throw new Error('Chưa có mã phòng');
+        const res = await fetch(url + '/api/data/' + encodeURIComponent(room), {
             method,
-            headers: {
-                Authorization: 'Bearer ' + token,
-                Accept: 'application/vnd.github+json',
-                'Content-Type': 'application/json'
-            },
-            body: body ? JSON.stringify(body) : undefined
+            headers: { 'Content-Type': 'application/json' },
+            body: data ? JSON.stringify(data) : undefined
         });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ message: res.statusText }));
-            throw new Error(err.message || 'HTTP ' + res.status);
-        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
     }
 
-    async function testGitHubConnection(token) {
+    function saveSyncServer() {
+        const url = document.getElementById('syncServerUrl').value.trim().replace(/\/+$/, '');
+        if (!url) { showSyncStatus('Nhập Server URL!', 'red'); return; }
+        localStorage.setItem('syncServerUrl', url);
+        SYNC_SERVER = url;
+        showSyncStatus('Đã lưu. Đang kiểm tra...', 'orange');
+        testSyncConnection();
+    }
+
+    function clearSyncServer() {
+        localStorage.removeItem('syncServerUrl');
+        document.getElementById('syncServerUrl').value = '';
+        showSyncStatus('Đã ngắt kết nối.', 'orange');
+        updateSyncStatusUI();
+    }
+
+    async function testSyncConnection() {
         try {
-            await gitHubRequest('GET');
-            showSyncStatus('Kết nối GitHub thành công! ✓', 'green');
+            const res = await fetch(localStorage.getItem('syncServerUrl') + '/health');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            showSyncStatus('Kết nối server thành công! ✓ Tự động đồng bộ.', 'green');
+            await syncPull();
         } catch (e) {
-            if (e.message.includes('404')) {
-                showSyncStatus('Kết nối OK! File data.json sẽ được tạo khi đẩy dữ liệu.', 'green');
-            } else {
-                showSyncStatus('Lỗi: ' + e.message, 'red');
-            }
+            showSyncStatus('Lỗi: ' + e.message, 'red');
         }
         updateSyncStatusUI();
     }
 
     async function syncPush() {
-        showSyncStatus('Đang đẩy lên GitHub...', 'orange');
+        showSyncStatus('Đang đẩy dữ liệu...', 'orange');
         try {
-            const content = JSON.stringify({ products, history, updatedAt: new Date().toISOString() }, null, 2);
-            const encoded = btoa(unescape(encodeURIComponent(content)));
-            let sha = null;
-            try { sha = (await gitHubRequest('GET')).sha; } catch (e) {}
-            await gitHubRequest('PUT', { message: 'Sync ' + new Date().toLocaleString('vi-VN'), content: encoded, sha });
-            showSyncStatus('✓ Đã đẩy lên GitHub! (<strong>' + products.length + ' sản phẩm</strong>, ' + history.length + ' lịch sử)', 'green');
-        } catch (e) {
-            showSyncStatus('Lỗi: ' + e.message, 'red');
-        }
+            await syncApi('POST', { products, history, updatedAt: new Date().toISOString() });
+            showSyncStatus('✓ Đã đồng bộ lên server!', 'green');
+        } catch (e) { showSyncStatus('Lỗi: ' + e.message, 'red'); }
     }
 
     async function syncPull() {
-        showSyncStatus('Đang kéo từ GitHub...', 'orange');
         try {
-            const data = await gitHubRequest('GET');
-            const decoded = decodeURIComponent(escape(atob(data.content)));
-            const json = JSON.parse(decoded);
-            let msg = [];
-            if (json.products) { products = json.products; saveProducts(); msg.push(products.length + ' sản phẩm'); }
-            if (json.history) { history = json.history; localStorage.setItem('history', JSON.stringify(history)); msg.push(history.length + ' lịch sử'); }
+            const data = await syncApi('GET');
+            if (!data) return;
+            if (data.products) { products = data.products; saveProducts(); }
+            if (data.history) { history = data.history; localStorage.setItem('history', JSON.stringify(history)); }
             renderTable(); renderExportList(); renderHistory();
-            showSyncStatus('✓ Đã kéo từ GitHub! (' + msg.join(', ') + ')', 'green');
-        } catch (e) {
-            showSyncStatus('Lỗi: ' + e.message, 'red');
-        }
+        } catch (e) {}
     }
 
-    // Auto-sync debounced
     let syncTimer = null;
     function scheduleSync() {
-        if (!localStorage.getItem('gh_token')) return;
+        if (!localStorage.getItem('syncServerUrl')) return;
         if (syncTimer) clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
             syncTimer = null;
-            try {
-                const content = JSON.stringify({ products, history, updatedAt: new Date().toISOString() }, null, 2);
-                const encoded = btoa(unescape(encodeURIComponent(content)));
-                let sha = null;
-                try { sha = (await gitHubRequest('GET')).sha; } catch (e) {}
-                await gitHubRequest('PUT', { message: 'Auto sync', content: encoded, sha });
-            } catch (e) {}
-        }, 5000);
+            try { await syncApi('POST', { products, history }); } catch (e) {}
+        }, 4000);
     }
 
-    // Load saved token & auto-pull on startup
+    // Init
     (function() {
-        const saved = localStorage.getItem('gh_token') || '';
-        if (saved) document.getElementById('syncToken').value = saved;
-        updateSyncStatusUI();
+        const saved = localStorage.getItem('syncServerUrl') || '';
         if (saved) {
-            setTimeout(async () => {
-                try { await syncPull(); } catch (e) {}
-            }, 800);
+            document.getElementById('syncServerUrl').value = saved;
+            document.getElementById('syncRoom').value = localStorage.getItem('syncRoomId') || SYNC_ROOM;
+            setTimeout(async () => { try { await syncPull(); } catch (e) {} }, 500);
+        } else {
+            document.getElementById('syncRoom').value = SYNC_ROOM;
         }
+        updateSyncStatusUI();
     })();
 
     // ---------- NHAP KHO ----------
