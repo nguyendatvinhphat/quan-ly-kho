@@ -443,7 +443,10 @@
         if (syncTimer) clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
             syncTimer = null;
-            try { await syncApi('POST', { products, history }); } catch (e) {}
+            try {
+                await syncApi('POST', { products, history });
+                await syncPull();
+            } catch (e) {}
         }, 4000);
     }
 
@@ -475,11 +478,8 @@
         } catch (e) {}
     }
 
-    // Auto pull on load + periodic pull every 10s
+    // Auto pull on load
     setTimeout(() => syncTest(), 600);
-    setInterval(async () => {
-        try { await syncPull(); } catch (e) {}
-    }, 10000);
 
     // ---------- NHAP KHO ----------
     function addProduct() {
