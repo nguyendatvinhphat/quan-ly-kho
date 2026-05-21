@@ -471,8 +471,11 @@
         } catch (e) {}
     }
 
-    // Auto pull on load, auto push on changes
+    // Auto pull on load + periodic pull every 10s
     setTimeout(() => syncTest(), 600);
+    setInterval(async () => {
+        try { await syncPull(); } catch (e) {}
+    }, 10000);
 
     // ---------- NHAP KHO ----------
     function addProduct() {
