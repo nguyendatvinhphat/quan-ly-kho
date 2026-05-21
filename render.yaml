@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: quan-ly-kho-server
+    env: node
+    region: singapore
+    buildCommand: cd server && npm install
+    startCommand: cd server && node server.js
+    plan: free
+    healthCheckPath: /health
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: NODE_VERSION
+        value: 18

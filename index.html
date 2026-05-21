@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Kho</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 22px;
+            margin-bottom: 4px;
+            color: #333;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .tab:hover { color: #1677ff; }
+        .tab.active {
+            color: #1677ff;
+            border-bottom-color: #1677ff;
+            font-weight: 600;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .form-row input,
+        .form-row select {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-row input:focus,
+        .form-row select:focus { border-color: #4096ff; }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .form-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .form-actions button:hover { opacity: 0.85; }
+        .btn-add { background: #1677ff; color: #fff; }
+        .btn-update { background: #fa8c16; color: #fff; }
+        .btn-cancel-edit { background: #888; color: #fff; }
+        .btn-export-excel { background: #52c41a; color: #fff; }
+        .btn-clear { background: #ff4d4f; color: #fff; }
+        .btn-export-kho { background: #fa8c16; color: #fff; }
+        .edit-badge {
+            display: inline-block;
+            font-size: 12px;
+            background: #fa8c16;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .clickable-row { cursor: pointer; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        th { background: #fafafa; font-weight: 600; color: #555; }
+        tr:hover { background: #f5f5f5; }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ff4d4f;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .empty-msg {
+            text-align: center;
+            color: #999;
+            padding: 30px 0;
+        }
+        .summary {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #333;
+        }
+        .low-stock { color: #ff4d4f; font-weight: 600; }
+        .export-select {
+            flex: 0 0 220px;
+        }
+        .export-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        .export-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background 0.15s;
+        }
+        .export-list-item:hover { background: #e6f4ff; }
+        .export-list-item.selected { background: #bae0ff; font-weight: 600; }
+        .export-list-item:last-child { border-bottom: none; }
+        .export-list-item .info { flex: 1; }
+        .export-list-item .name { font-weight: 500; }
+        .export-list-item .detail { font-size: 12px; color: #888; margin-top: 2px; }
+        .export-list-item .stock { color: #1677ff; font-weight: 600; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .pagination button {
+            padding: 6px 14px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .pagination button.active-page {
+            background: #1677ff;
+            color: #fff;
+            border-color: #1677ff;
+        }
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+        .search-box {
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        .search-box:focus { border-color: #4096ff; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Quản Lý Kho</h1>
+    <p class="subtitle">Nhập kho &amp; Xuất kho</p>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="tab-nhap">Nhập kho</button>
+        <button class="tab" data-tab="tab-xuat">Xuất kho</button>
+        <button class="tab" data-tab="tab-history">Lịch sử</button>
+        <button class="tab" data-tab="tab-sync">Đồng bộ</button>
+    </div>
+
+    <!-- TAB NHAP KHO -->
+    <div id="tab-nhap" class="tab-content active">
+        <div id="editIndicator" style="display:none;margin-bottom:12px;">
+            <span class="edit-badge">Đang sửa</span>
+            <span id="editLabel" style="font-size:14px;color:#555;"></span>
+        </div>
+        <div class="form-row">
+            <input type="text" id="productName" placeholder="Tên sản phẩm" autocomplete="off">
+            <input type="text" id="productCode" placeholder="Mã sản phẩm" autocomplete="off">
+        </div>
+        <div class="form-row">
+            <input type="number" id="quantity" placeholder="Số lượng" min="1" value="1">
+            <select id="unit">
+                <option value="Cái">Cái</option>
+                <option value="Hộp">Hộp</option>
+                <option value="Thùng">Thùng</option>
+                <option value="Bao">Bao</option>
+                <option value="Chai">Chai</option>
+                <option value="Lon">Lon</option>
+                <option value="Gói">Gói</option>
+                <option value="Bịch">Bịch</option>
+                <option value="Kg">Kg</option>
+                <option value="Mét">Mét</option>
+                <option value="Bộ">Bộ</option>
+                <option value="Cuộn">Cuộn</option>
+            </select>
+            <input type="number" id="price" placeholder="Đơn giá" min="0" step="1000">
+            <select id="source" onchange="toggleCustomSource()">
+                <option value="">Nguồn hàng</option>
+                <option value="Chint">Chint</option>
+                <option value="Taobao">Taobao</option>
+                <option value="Chợ">Chợ</option>
+                <option value="1688">1688</option>
+                <option value="Alibaba">Alibaba</option>
+                <option value="Tmall">Tmall</option>
+                <option value="JD.com">JD.com</option>
+                <option value="Đại lý">Đại lý</option>
+                <option value="Nhà phân phối">Nhà phân phối</option>
+                <option value="Sản xuất trực tiếp">Sản xuất trực tiếp</option>
+                <option value="Khác">Khác</option>
+            </select>
+            <input type="text" id="customSource" placeholder="Nhập tên nguồn hàng..." autocomplete="off" style="display:none;">
+        </div>
+        <div class="form-actions">
+            <button class="btn-add" id="btnAdd" onclick="addProduct()">+ Nhập kho</button>
+            <button class="btn-update" id="btnUpdate" onclick="updateProduct()" style="display:none;">Cập nhật</button>
+            <button class="btn-cancel-edit" id="btnCancel" onclick="cancelEdit()" style="display:none;">Hủy</button>
+            <button class="btn-export-excel" onclick="exportInventory()">Xuất Excel tồn kho</button>
+            <button class="btn-add" onclick="document.getElementById('importCsvInput').click()" style="background:#722ed1;">Import CSV</button>
+            <input type="file" id="importCsvInput" accept=".csv" style="display:none" onchange="importCsv(event)">
+            <button class="btn-add" onclick="exportBackup()" style="background:#13c2c2;">Sao lưu JSON</button>
+            <button class="btn-add" onclick="document.getElementById('importBackupInput').click()" style="background:#eb2f96;">Phục hồi JSON</button>
+            <input type="file" id="importBackupInput" accept=".json" style="display:none" onchange="importBackup(event)">
+            <button class="btn-clear" onclick="clearAll()">Xóa tất cả</button>
+        </div>
+
+        <table id="productTable">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Mã SP</th>
+                    <th>Nguồn hàng</th>
+                    <th>Tồn kho</th>
+                    <th>Đơn vị</th>
+                    <th>Đơn giá</th>
+                    <th>Thành tiền</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="productBody"></tbody>
+        </table>
+        <div class="summary" id="summary">Tổng: 0 sản phẩm | Tồn: 0 | Tổng tiền: 0 VNĐ</div>
+    </div>
+
+    <!-- TAB XUAT KHO -->
+    <div id="tab-xuat" class="tab-content">
+        <p style="color:#888;font-size:13px;margin-bottom:12px;">Chọn sản phẩm bên dưới để thêm vào danh sách xuất kho.</p>
+        <input type="text" id="exportSearch" class="search-box" placeholder="Tìm kiếm sản phẩm..." oninput="renderExportList()">
+        <div class="export-list" id="exportList"></div>
+
+        <div id="exportBatchSection" style="display:none;margin-top:16px;">
+            <h3 style="font-size:15px;margin-bottom:10px;color:#333;">Danh sách xuất kho</h3>
+            <div style="overflow-x:auto;">
+                <table id="exportBatchTable">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Tên sản phẩm</th>
+                            <th>Mã SP</th>
+                            <th>Tồn</th>
+                            <th>Đơn vị</th>
+                            <th>Số lượng xuất</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="exportBatchBody"></tbody>
+                </table>
+            </div>
+            <div class="form-row" style="margin-top:12px;align-items:center;">
+                <input type="text" id="exportReason" placeholder="Lý do xuất (VD: Bán, Hỏng, ...)" autocomplete="off" style="flex:2;">
+                <button class="btn-export-kho" onclick="doBatchExport()">Xác nhận xuất kho</button>
+                <button class="btn-cancel-edit" onclick="clearExportBatch()">Hủy</button>
+            </div>
+            <div id="exportResult" style="margin-top:12px;font-size:14px;color:#333;"></div>
+        </div>
+    </div>
+
+    <!-- TAB LICH SU -->
+    <div id="tab-history" class="tab-content">
+        <div class="form-actions">
+            <button class="btn-export-excel" onclick="exportHistory()">Xuất Excel lịch sử</button>
+            <button class="btn-clear" onclick="clearHistory()">Xóa lịch sử</button>
+        </div>
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Loại</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Mã SP</th>
+                    <th>Nguồn hàng</th>
+                    <th>Số lượng</th>
+                    <th>Đơn vị</th>
+                    <th>Đơn giá</th>
+                    <th>Lý do</th>
+                    <th>Thời gian</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+        </table>
+        <div class="pagination" id="historyPagination"></div>
+    </div>
+
+    <!-- TAB DONG BO -->
+    <div id="tab-sync" class="tab-content">
+        <p style="color:#888;font-size:13px;margin-bottom:12px;">Dữ liệu tự động đồng bộ giữa các máy qua server trung gian.</p>
+        <div class="form-row">
+            <input type="text" id="syncServerUrl" placeholder="Server URL (VD: https://quan-ly-kho-server.onrender.com)" autocomplete="off">
+            <input type="text" id="syncRoom" placeholder="Mã phòng (tự động sinh nếu để trống)" autocomplete="off">
+        </div>
+        <div class="form-actions">
+            <button class="btn-add" onclick="saveSyncServer()" style="background:#13c2c2;">Lưu kết nối</button>
+            <button class="btn-export-kho" onclick="testSyncServer()">Kiểm tra kết nối</button>
+            <button class="btn-clear" onclick="clearSyncServer()">Ngắt kết nối</button>
+        </div>
+        <div id="syncStatus" style="margin-top:8px;padding:10px 14px;border-radius:6px;font-size:14px;display:none;"></div>
+        <div id="syncAutoStatus" style="margin-top:8px;font-size:13px;color:#888;"></div>
+    </div>
+</div>
+
+<script>
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let history = JSON.parse(localStorage.getItem('history')) || [];
+    let selectedExportIndex = -1;
+    let editIndex = -1;
+    let historyPage = 1;
+    const HISTORY_PER_PAGE = 15;
+    let exportBatch = [];
+
+    // Tab switching - must be before render calls in case they throw
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            tab.classList.add('active');
+            const el = document.getElementById(tab.dataset.tab);
+            if (el) el.classList.add('active');
+            if (editIndex >= 0) cancelEdit();
+            if (tab.dataset.tab === 'tab-xuat') renderExportList();
+            if (tab.dataset.tab === 'tab-history') renderHistory();
+        });
+    });
+
+    renderTable();
+    renderExportList();
+    renderHistory();
+
+    function toggleCustomSource() {
+        const sel = document.getElementById('source');
+        const custom = document.getElementById('customSource');
+        custom.style.display = sel.value === 'Khác' ? '' : 'none';
+        if (sel.value !== 'Khác') custom.value = '';
+    }
+
+    function getSource() {
+        const sel = document.getElementById('source');
+        if (sel.value === 'Khác') {
+            const custom = document.getElementById('customSource').value.trim();
+            return custom || 'Khác';
+        }
+        return sel.value;
+    }
+
+    function setSource(val) {
+        const sel = document.getElementById('source');
+        const custom = document.getElementById('customSource');
+        const opt = Array.from(sel.options).find(o => o.value === val);
+        if (opt) {
+            sel.value = val;
+            custom.style.display = 'none';
+            custom.value = '';
+        } else {
+            sel.value = 'Khác';
+            custom.style.display = '';
+            custom.value = val || '';
+        }
+    }
+
+    // ---------- DONG BO ----------
+    function loadSyncServer() {
+        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
+        if (cfg.url) document.getElementById('syncServerUrl').value = cfg.url;
+        if (cfg.room) document.getElementById('syncRoom').value = cfg.room;
+        return cfg;
+    }
+    function getSyncServer() {
+        let url = document.getElementById('syncServerUrl').value.trim().replace(/\/+$/, '');
+        let room = document.getElementById('syncRoom').value.trim();
+        if (!room) {
+            room = localStorage.getItem('syncRoomId');
+            if (!room) {
+                room = Math.random().toString(36).slice(2, 10);
+                localStorage.setItem('syncRoomId', room);
+            }
+            document.getElementById('syncRoom').value = room;
+        }
+        return { url, room };
+    }
+    function saveSyncServer() {
+        const cfg = getSyncServer();
+        if (!cfg.url) { showSyncStatus('Vui lòng nhập Server URL!', 'red'); return; }
+        localStorage.setItem('syncServer', JSON.stringify(cfg));
+        showSyncStatus('Đã lưu kết nối! Dùng mã phòng này cho các máy khác: <strong>' + cfg.room + '</strong>', 'green');
+        updateSyncStatus();
+    }
+    function clearSyncServer() {
+        localStorage.removeItem('syncServer');
+        document.getElementById('syncServerUrl').value = '';
+        document.getElementById('syncRoom').value = '';
+        showSyncStatus('Đã ngắt kết nối.', 'orange');
+        updateSyncStatus();
+    }
+    function showSyncStatus(msg, color) {
+        const el = document.getElementById('syncStatus');
+        el.style.display = '';
+        el.style.background = color === 'green' ? '#f6ffed' : color === 'red' ? '#fff2f0' : '#fffbe6';
+        el.style.border = '1px solid ' + (color === 'green' ? '#b7eb8f' : color === 'red' ? '#ffccc7' : '#ffe58f');
+        el.innerHTML = msg;
+    }
+    function updateSyncStatus() {
+        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
+        const el = document.getElementById('syncAutoStatus');
+        if (cfg.url) {
+            const room = cfg.room || localStorage.getItem('syncRoomId') || '?';
+            el.innerHTML = '✓ Đã kết nối server. Mã phòng: <strong>' + room + '</strong> (dùng mã này ở các máy khác). Dữ liệu tự động đồng bộ.';
+            el.style.color = '#52c41a';
+        } else {
+            el.innerHTML = '○ Chưa kết nối server. Nhập Server URL và ấn "Lưu kết nối".';
+            el.style.color = '#888';
+        }
+    }
+
+    async function syncApi(method, data) {
+        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
+        if (!cfg.url) throw new Error('Chưa kết nối server');
+        const room = cfg.room || localStorage.getItem('syncRoomId');
+        if (!room) throw new Error('Chưa có mã phòng');
+        const url = cfg.url + '/api/data/' + encodeURIComponent(room);
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: data ? JSON.stringify(data) : undefined
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    }
+
+    async function testSyncServer() {
+        const cfg = getSyncServer();
+        if (!cfg.url) { showSyncStatus('Vui lòng nhập Server URL!', 'red'); return; }
+        localStorage.setItem('syncServer', JSON.stringify(cfg));
+        showSyncStatus('Đang kiểm tra kết nối...', 'orange');
+        try {
+            const res = await fetch(cfg.url + '/health');
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            showSyncStatus('Kết nối server thành công! ✓ Mã phòng: <strong>' + cfg.room + '</strong>', 'green');
+        } catch (e) {
+            showSyncStatus('Lỗi kết nối: ' + e.message, 'red');
+        }
+        updateSyncStatus();
+    }
+
+    let syncTimer = null;
+    let syncQueue = 0;
+    function scheduleSync() {
+        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
+        if (!cfg.url) return;
+        syncQueue++;
+        if (syncTimer) clearTimeout(syncTimer);
+        syncTimer = setTimeout(async () => {
+            syncTimer = null;
+            if (syncQueue > 0) {
+                syncQueue = 0;
+                try {
+                    await syncApi('POST', { products, history });
+                } catch (e) { /* silent */ }
+            }
+        }, 4000);
+    }
+    async function syncPullFromServer() {
+        try {
+            const data = await syncApi('GET');
+            if (!data) return;
+            if (data.products) products = data.products;
+            if (data.history) history = data.history;
+            saveProducts();
+            localStorage.setItem('history', JSON.stringify(history));
+            renderTable();
+            renderExportList();
+            renderHistory();
+        } catch (e) { /* silent */ }
+    }
+
+    // Auto pull on page load if configured
+    setTimeout(() => {
+        const cfg = JSON.parse(localStorage.getItem('syncServer') || '{}');
+        if (cfg.url) syncPullFromServer();
+    }, 500);
+
+    loadSyncServer();
+    updateSyncStatus();
+
+    // ---------- NHAP KHO ----------
+    function addProduct() {
+        const name = document.getElementById('productName').value.trim();
+        const code = document.getElementById('productCode').value.trim();
+        let qty = parseInt(document.getElementById('quantity').value) || 1;
+        const unit = document.getElementById('unit').value;
+        const price = parseFloat(document.getElementById('price').value) || 0;
+        const source = getSource();
+
+        if (!name) { alert('Vui lòng nhập tên sản phẩm!'); return; }
+        if (qty < 1) { alert('Số lượng phải >= 1!'); return; }
+
+        const existing = products.find(p => p.name.toLowerCase() === name.toLowerCase() && p.code === code && p.unit === unit);
+        if (existing) {
+            existing.qty += qty;
+            if (price) existing.price = price;
+            if (source) existing.source = source;
+            addHistory('Nhập', existing.name, existing.code, qty, existing.unit, price, 'Nhập kho', source);
+        } else {
+            products.push({ name, code, qty, unit, price, source });
+            addHistory('Nhập', name, code, qty, unit, price, 'Nhập kho', source);
+        }
+        saveProducts();
+        renderTable();
+        clearForm();
+    }
+
+    function editProduct(index) {
+        editIndex = index;
+        const p = products[index];
+        document.getElementById('productName').value = p.name;
+        document.getElementById('productCode').value = p.code || '';
+        document.getElementById('quantity').value = p.qty;
+        document.getElementById('unit').value = p.unit;
+        document.getElementById('price').value = p.price || '';
+        setSource(p.source || '');
+        document.getElementById('btnAdd').style.display = 'none';
+        document.getElementById('btnUpdate').style.display = '';
+        document.getElementById('btnCancel').style.display = '';
+        document.getElementById('editIndicator').style.display = '';
+        document.getElementById('editLabel').textContent = `${p.name} (${p.code || 'Mã: -'})`;
+        document.getElementById('productName').focus();
+        document.getElementById('productTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function updateProduct() {
+        if (editIndex < 0 || editIndex >= products.length) { cancelEdit(); return; }
+        const name = document.getElementById('productName').value.trim();
+        const code = document.getElementById('productCode').value.trim();
+        let qty = parseInt(document.getElementById('quantity').value) || 1;
+        const unit = document.getElementById('unit').value;
+        const price = parseFloat(document.getElementById('price').value) || 0;
+        const source = getSource();
+
+        if (!name) { alert('Vui lòng nhập tên sản phẩm!'); return; }
+        if (qty < 1) { alert('Số lượng phải >= 1!'); return; }
+
+        const p = products[editIndex];
+        p.name = name;
+        p.code = code;
+        p.qty = qty;
+        p.unit = unit;
+        p.price = price;
+        p.source = source;
+
+        saveProducts();
+        renderTable();
+        cancelEdit();
+    }
+
+    function cancelEdit() {
+        editIndex = -1;
+        document.getElementById('btnAdd').style.display = '';
+        document.getElementById('btnUpdate').style.display = 'none';
+        document.getElementById('btnCancel').style.display = 'none';
+        document.getElementById('editIndicator').style.display = 'none';
+        clearForm();
+    }
+
+    function deleteProduct(index) {
+        products.splice(index, 1);
+        saveProducts();
+        renderTable();
+    }
+
+    function clearAll() {
+        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+        const input = prompt(`❗ XÓA TẤT CẢ DỮ LIỆU\n\nNhập mã xác nhận để tiếp tục: ${code}\n(Nhập sai sẽ hủy thao tác)`, '');
+        if (input !== code) { alert('Mã xác nhận không đúng! Đã hủy.'); return; }
+        products = [];
+        history = [];
+        localStorage.removeItem('products');
+        localStorage.removeItem('history');
+        renderTable();
+        renderHistory();
+        alert('Đã xóa toàn bộ dữ liệu!');
+    }
+
+    function clearForm() {
+        document.getElementById('productName').value = '';
+        document.getElementById('productCode').value = '';
+        document.getElementById('quantity').value = '1';
+        document.getElementById('unit').value = 'Cái';
+        document.getElementById('price').value = '';
+        document.getElementById('source').value = '';
+        document.getElementById('customSource').value = '';
+        document.getElementById('customSource').style.display = 'none';
+        document.getElementById('productName').focus();
+    }
+
+    function saveProducts() {
+        localStorage.setItem('products', JSON.stringify(products));
+        scheduleSync();
+    }
+
+    // ---------- XUAT KHO ----------
+    function renderExportList() {
+        const container = document.getElementById('exportList');
+        const search = document.getElementById('exportSearch').value.toLowerCase().trim();
+        const filtered = products.filter(p => p.name.toLowerCase().includes(search) || p.code.toLowerCase().includes(search));
+        const inStock = filtered.filter(p => p.qty > 0);
+        const outOfStock = filtered.filter(p => p.qty <= 0);
+
+        if (inStock.length === 0 && outOfStock.length === 0) {
+            container.innerHTML = '<div class="empty-msg">Không có sản phẩm nào</div>';
+            return;
+        }
+
+        let html = '';
+        inStock.forEach((p) => {
+            const idx = products.indexOf(p);
+            const inBatch = exportBatch.find(e => e.index === idx);
+            html += `<div class="export-list-item" style="${inBatch ? 'background:#d9f7be;' : ''}">
+                <div class="info" style="cursor:pointer;flex:1;" onclick="quickAddExport(${idx})">
+                    <div class="name">${p.name} ${inBatch ? '(✓ đã thêm)' : ''}</div>
+                    <div class="detail">${p.code || 'Mã: -'} | ${p.unit} | ${p.source ? p.source + ' | ' : ''}Giá: ${p.price ? formatCurrency(p.price) : '0'}</div>
+                </div>
+                <div class="stock" style="display:flex;align-items:center;gap:8px;">
+                    <span style="color:#1677ff;">Tồn: ${p.qty}</span>
+                    <button style="padding:4px 12px;border:none;border-radius:4px;background:#1677ff;color:#fff;cursor:pointer;font-size:13px;" onclick="event.stopPropagation();quickAddExport(${idx})">+ Thêm</button>
+                </div>
+            </div>`;
+        });
+        if (outOfStock.length > 0) {
+            html += `<div style="padding:8px 14px;color:#bbb;font-size:12px;">— Hết hàng —</div>`;
+            outOfStock.forEach((p) => {
+                const idx = products.indexOf(p);
+                html += `<div class="export-list-item" style="opacity:0.5;">
+                    <div class="info">
+                        <div class="name">${p.name}</div>
+                        <div class="detail">${p.code || 'Mã: -'} | ${p.unit}${p.source ? ' | ' + p.source : ''}</div>
+                    </div>
+                    <div class="stock">Tồn: 0</div>
+                </div>`;
+            });
+        }
+        container.innerHTML = html;
+        document.getElementById('exportResult').textContent = '';
+    }
+
+    function quickAddExport(index) {
+        const p = products[index];
+        if (!p || p.qty <= 0) { alert('Sản phẩm đã hết hàng!'); return; }
+        const existing = exportBatch.find(e => e.index === index);
+        if (existing) {
+            if (existing.qty < p.qty) existing.qty++;
+        } else {
+            exportBatch.push({ index, qty: 1 });
+        }
+        renderExportList();
+        renderExportBatch();
+    }
+
+    function renderExportBatch() {
+        const section = document.getElementById('exportBatchSection');
+        const tbody = document.getElementById('exportBatchBody');
+        if (exportBatch.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+        section.style.display = '';
+        let rows = '';
+        exportBatch.forEach((e, i) => {
+            const p = products[e.index];
+            if (!p) return;
+            rows += `<tr>
+                <td>${i + 1}</td>
+                <td>${p.name}</td>
+                <td>${p.code || '-'}</td>
+                <td>${p.qty}</td>
+                <td>${p.unit}</td>
+                <td><input type="number" min="1" max="${p.qty}" value="${e.qty}" style="width:80px;padding:6px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:14px;" onchange="updateExportQty(${i}, this.value)" onfocus="this.select()"></td>
+                <td><button class="delete-btn" onclick="removeExportItem(${i})">✕</button></td>
+            </tr>`;
+        });
+        tbody.innerHTML = rows;
+    }
+
+    function updateExportQty(i, val) {
+        const qty = parseInt(val) || 0;
+        const p = products[exportBatch[i].index];
+        if (qty < 1) { exportBatch.splice(i, 1); }
+        else if (qty > p.qty) { alert(`Chỉ còn ${p.qty} ${p.unit}!`); exportBatch[i].qty = p.qty; }
+        else { exportBatch[i].qty = qty; }
+        renderExportBatch();
+    }
+
+    function removeExportItem(i) {
+        exportBatch.splice(i, 1);
+        renderExportList();
+        renderExportBatch();
+    }
+
+    function clearExportBatch() {
+        exportBatch = [];
+        renderExportList();
+        renderExportBatch();
+        document.getElementById('exportReason').value = '';
+        document.getElementById('exportResult').textContent = '';
+    }
+
+    function doBatchExport() {
+        if (exportBatch.length === 0) { alert('Chưa có sản phẩm nào trong danh sách!'); return; }
+        const reason = document.getElementById('exportReason').value.trim() || 'Xuất kho';
+        let success = [];
+        let errors = [];
+
+        exportBatch.forEach(e => {
+            const p = products[e.index];
+            const qty = e.qty;
+            if (!p) { errors.push('Sản phẩm không tồn tại'); return; }
+            if (qty <= 0) { errors.push(`${p.name}: số lượng không hợp lệ`); return; }
+            if (qty > p.qty) { errors.push(`${p.name}: tồn ${p.qty}, không đủ ${qty}`); return; }
+            p.qty -= qty;
+            addHistory('Xuất', p.name, p.code, qty, p.unit, p.price, reason, p.source);
+            success.push(`${p.name}: ${qty} ${p.unit}`);
+        });
+
+        saveProducts();
+        renderTable();
+        if (success.length > 0) {
+            document.getElementById('exportResult').innerHTML = `<span style="color:#52c41a;">✓ Đã xuất:<br>${success.join('<br>')}</span>`;
+        }
+        if (errors.length > 0) {
+            document.getElementById('exportResult').innerHTML += `<span style="color:#ff4d4f;display:block;margin-top:8px;">Lỗi:<br>${errors.join('<br>')}</span>`;
+        }
+        exportBatch = [];
+        renderExportList();
+        renderExportBatch();
+    }
+
+    // ---------- LICH SU ----------
+    function addHistory(type, name, code, qty, unit, price, reason, source) {
+        history.unshift({
+            type,
+            name,
+            code: code || '',
+            qty,
+            unit,
+            price: price || 0,
+            reason,
+            source: source || '',
+            time: new Date().toLocaleString('vi-VN', { hour12: false })
+        });
+        localStorage.setItem('history', JSON.stringify(history));
+        scheduleSync();
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const tbody = document.getElementById('historyBody');
+        const pagination = document.getElementById('historyPagination');
+        const totalPages = Math.ceil(history.length / HISTORY_PER_PAGE) || 1;
+        if (historyPage > totalPages) historyPage = totalPages;
+
+        const start = (historyPage - 1) * HISTORY_PER_PAGE;
+        const pageItems = history.slice(start, start + HISTORY_PER_PAGE);
+
+        if (history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">Chưa có lịch sử</td></tr>';
+            pagination.innerHTML = '';
+            return;
+        }
+
+        let rows = '';
+        pageItems.forEach((h, i) => {
+            const isExport = h.type === 'Xuất';
+            const bgColor = isExport ? '#fff7e6' : '#f6ffed';
+            rows += `<tr style="background:${bgColor};">
+                <td>${start + i + 1}</td>
+                <td>${h.type}</td>
+                <td>${h.name}</td>
+                <td>${h.code || '-'}</td>
+                <td>${h.source || '-'}</td>
+                <td>${isExport ? '-' : '+'}${h.qty}</td>
+                <td>${h.unit}</td>
+                <td>${h.price ? formatCurrency(h.price) : '-'}</td>
+                <td>${h.reason || '-'}</td>
+                <td style="font-size:12px;color:#888;">${h.time}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = rows;
+
+        // Pagination
+        let phtml = '';
+        phtml += `<button ${historyPage <= 1 ? 'disabled' : ''} onclick="historyPage=1;renderHistory();">«</button>`;
+        phtml += `<button ${historyPage <= 1 ? 'disabled' : ''} onclick="historyPage--;renderHistory();">‹</button>`;
+        for (let i = Math.max(1, historyPage - 2); i <= Math.min(totalPages, historyPage + 2); i++) {
+            phtml += `<button class="${i === historyPage ? 'active-page' : ''}" onclick="historyPage=${i};renderHistory();">${i}</button>`;
+        }
+        phtml += `<button ${historyPage >= totalPages ? 'disabled' : ''} onclick="historyPage++;renderHistory();">›</button>`;
+        phtml += `<button ${historyPage >= totalPages ? 'disabled' : ''} onclick="historyPage=${totalPages};renderHistory();">»</button>`;
+        pagination.innerHTML = phtml;
+    }
+
+    function clearHistory() {
+        const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+        const input = prompt(`❗ XÓA LỊCH SỬ\n\nNhập mã xác nhận: ${code}`, '');
+        if (input !== code) { alert('Mã xác nhận không đúng!'); return; }
+        history = [];
+        localStorage.removeItem('history');
+        scheduleSync();
+        renderHistory();
+    }
+
+    // ---------- IMPORT / BACKUP ----------
+    function importCsv(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length < 2) { alert('File CSV không hợp lệ!'); return; }
+            const imported = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split('\t');
+                if (cols.length < 6) continue;
+                const name = cols[1]?.trim();
+                if (!name) continue;
+                imported.push({
+                    name,
+                    code: cols[2]?.trim() || '',
+                    qty: parseInt(cols[4]) || 0,
+                    unit: cols[5]?.trim() || 'Cái',
+                    price: parseFloat(cols[6]) || 0,
+                    source: cols[3]?.trim() || ''
+                });
+            }
+            if (imported.length === 0) { alert('Không tìm thấy dữ liệu hợp lệ!'); return; }
+            if (confirm(`Tìm thấy ${imported.length} sản phẩm. Thêm vào danh sách hiện tại?`)) {
+                imported.forEach(p => {
+                    const existing = products.find(x => x.name.toLowerCase() === p.name.toLowerCase() && x.code === p.code && x.unit === p.unit);
+                    if (existing) {
+                        existing.qty += p.qty;
+                        if (p.price) existing.price = p.price;
+                        if (p.source) existing.source = p.source;
+                    } else {
+                        products.push(p);
+                    }
+                    addHistory('Nhập', p.name, p.code, p.qty, p.unit, p.price, 'Import CSV', p.source);
+                });
+                saveProducts();
+                renderTable();
+                renderExportList();
+                alert(`Đã import ${imported.length} sản phẩm thành công!`);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    function exportBackup() {
+        const data = { products, history, exportedAt: new Date().toISOString() };
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'backup-kho_' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+
+    function importBackup(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (!data.products || !Array.isArray(data.products)) {
+                    alert('File backup không hợp lệ!'); return;
+                }
+                const mergeProducts = confirm('Nhấn OK để gộp với dữ liệu hiện tại, Cancel để thay thế hoàn toàn.');
+                if (mergeProducts) {
+                    data.products.forEach(p => {
+                        const existing = products.find(x => x.name.toLowerCase() === p.name.toLowerCase() && x.code === p.code && x.unit === p.unit);
+                        if (existing) {
+                            existing.qty += p.qty || 0;
+                            if (p.price) existing.price = p.price;
+                            if (p.source) existing.source = p.source;
+                        } else {
+                            products.push(p);
+                        }
+                    });
+                } else {
+                    products = data.products || [];
+                }
+                if (data.history && Array.isArray(data.history)) {
+                    const mergeHistory = confirm('Gộp lịch sử? (Cancel = thay thế)');
+                    if (mergeHistory) {
+                        history = [...data.history, ...history];
+                    } else {
+                        history = data.history || [];
+                    }
+                }
+                saveProducts();
+                localStorage.setItem('history', JSON.stringify(history));
+                renderTable();
+                renderExportList();
+                renderHistory();
+                alert('Phục hồi dữ liệu thành công!');
+            } catch (err) {
+                alert('Lỗi đọc file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // ---------- RENDER ----------
+    function formatCurrency(n) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('productBody');
+        if (products.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Kho trống</td></tr>';
+            document.getElementById('summary').textContent = 'Tổng: 0 sản phẩm | Tồn: 0 | Tổng tiền: 0 VNĐ';
+            return;
+        }
+        let rows = '';
+        let totalQty = 0;
+        let totalAmount = 0;
+        products.forEach((p, i) => {
+            const amount = p.qty * p.price;
+            totalQty += p.qty;
+            totalAmount += amount;
+            const lowClass = p.qty <= 0 ? 'low-stock' : '';
+            const isEditing = editIndex === i;
+            rows += `<tr class="clickable-row" style="${isEditing ? 'background:#fff7e6;' : ''}" onclick="editProduct(${i})">
+                <td>${i + 1}</td>
+                <td>${p.name}</td>
+                <td>${p.code || '-'}</td>
+                <td>${p.source || '-'}</td>
+                <td class="${lowClass}">${p.qty}</td>
+                <td>${p.unit}</td>
+                <td>${p.price ? formatCurrency(p.price) : '-'}</td>
+                <td>${formatCurrency(amount)}</td>
+                <td><button class="delete-btn" onclick="event.stopPropagation();deleteProduct(${i})">✕</button></td>
+            </tr>`;
+        });
+        tbody.innerHTML = rows;
+        document.getElementById('summary').textContent =
+            `Tổng: ${products.length} sản phẩm | Tồn: ${totalQty} | Tổng tiền: ${formatCurrency(totalAmount)}`;
+    }
+
+    // ---------- EXPORT ----------
+    function exportInventory() {
+        if (products.length === 0) { alert('Không có dữ liệu!'); return; }
+        const BOM = '\uFEFF';
+        const headers = ['STT', 'Tên sản phẩm', 'Mã SP', 'Nguồn hàng', 'Tồn kho', 'Đơn vị', 'Đơn giá', 'Thành tiền'];
+        const rows = products.map((p, i) => [i + 1, p.name, p.code || '', p.source || '', p.qty, p.unit, p.price || 0, p.qty * p.price].join('\t'));
+        downloadCSV(BOM + [headers.join('\t'), ...rows].join('\r\n'), 'ton-kho.csv');
+    }
+
+    function exportHistory() {
+        if (history.length === 0) { alert('Không có dữ liệu!'); return; }
+        const BOM = '\uFEFF';
+        const headers = ['STT', 'Loại', 'Tên sản phẩm', 'Mã SP', 'Nguồn hàng', 'Số lượng', 'Đơn vị', 'Đơn giá', 'Lý do', 'Thời gian'];
+        const rows = history.map((h, i) => [i + 1, h.type, h.name, h.code || '', h.source || '', h.type === 'Xuất' ? '-' + h.qty : '+' + h.qty, h.unit, h.price || 0, h.reason || '', h.time].join('\t'));
+        downloadCSV(BOM + [headers.join('\t'), ...rows].join('\r\n'), 'lich-su-kho.csv');
+    }
+
+    function downloadCSV(csv, filename) {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+
+    // Enter key
+    document.addEventListener('keydown', (e) => {
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab && activeTab.dataset.tab === 'tab-nhap' && e.key === 'Enter') {
+            e.preventDefault();
+            if (editIndex >= 0) updateProduct(); else addProduct();
+        }
+    });
+</script>
+</body>
+</html>
