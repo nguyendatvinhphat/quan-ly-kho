@@ -352,17 +352,13 @@
 
     <!-- TAB DONG BO -->
     <div id="tab-sync" class="tab-content">
-        <p style="color:#888;font-size:13px;margin-bottom:12px;">Đồng bộ qua server — tất cả thiết bị dùng chung <strong>mã phòng</strong> là tự động sync.</p>
-        <div class="form-row">
-            <input type="text" id="syncServerUrl" placeholder="Server URL (đã có sẵn nếu deploy Render thành công)" value="https://quan-ly-kho-server.onrender.com" autocomplete="off">
-            <input type="text" id="syncRoom" placeholder="Mã phòng (tự động)" autocomplete="off" readonly style="background:#f5f5f5;">
+        <p style="color:#888;font-size:13px;margin-bottom:12px;">Tất cả thiết bị tự động đồng bộ qua server. <strong>Không cần cấu hình gì.</strong></p>
+        <div style="background:#f6ffed;border:1px solid #b7eb8f;border-radius:6px;padding:16px;margin-bottom:12px;text-align:center;font-size:15px;">
+            <div id="syncStatus" style="display:none;"></div>
+            <div id="syncAutoStatus">🔄 Đang kết nối server...</div>
         </div>
-        <div class="form-actions">
-            <button class="btn-add" onclick="saveSyncServer()" style="background:#13c2c2;">Kết nối & Đồng bộ</button>
-            <button class="btn-clear" onclick="clearSyncServer()">Ngắt</button>
-        </div>
-        <div id="syncStatus" style="margin-top:8px;padding:10px 14px;border-radius:6px;font-size:14px;display:none;"></div>
-        <div id="syncAutoStatus" style="margin-top:8px;font-size:13px;color:#888;"></div>
+        <button class="btn-export-excel" onclick="syncTest()" style="margin-right:8px;">Kiểm tra kết nối</button>
+        <button class="btn-export-excel" onclick="syncPull()">Đồng bộ ngay</button>
     </div>
 </div>
 
@@ -424,12 +420,27 @@
         }
     }
 
-    // ---------- DONG BO (Server API) ----------
-    let SYNC_SERVER = localStorage.getItem('syncServerUrl') || 'https://quan-ly-kho-server.onrender.com';
-    let SYNC_ROOM = localStorage.getItem('syncRoomId');
-    if (!SYNC_ROOM) {
-        SYNC_ROOM = Math.random().toString(36).slice(2, 10);
-        localStorage.setItem('syncRoomId', SYNC_ROOM);
+    // ---------- DONG BO (Auto - hardcoded server) ----------
+    const SYNC_SERVER = 'https://quan-ly-kho-server.onrender.com';
+    const SYNC_ROOM = 'quan-ly-kho';
+
+    async function syncApi(method, data) {
+        const res = await fetch(SYNC_SERVER + '/api/data/' + SYNC_ROOM, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: data ? JSON.stringify(data) : undefined
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    }
+
+    let syncTimer = null;
+    function scheduleSync() {
+        if (syncTimer) clearTimeout(syncTimer);
+        syncTimer = setTimeout(async () => {
+            syncTimer = null;
+            try { await syncApi('POST', { products, history }); } catch (e) {}
+        }, 4000);
     }
 
     function showSyncStatus(msg, color) {
@@ -439,101 +450,29 @@
         el.style.border = '1px solid ' + (color === 'green' ? '#b7eb8f' : color === 'red' ? '#ffccc7' : '#ffe58f');
         el.innerHTML = msg;
     }
-    function updateSyncStatusUI() {
-        const el = document.getElementById('syncAutoStatus');
-        const url = localStorage.getItem('syncServerUrl');
-        if (url) {
-            const rid = localStorage.getItem('syncRoomId') || '?';
-            el.innerHTML = '✓ Đã kết nối server. Mã phòng: <strong>' + rid + '</strong> (dùng mã này ở máy khác). Dữ liệu tự động đồng bộ.';
-            el.style.color = '#52c41a';
-        } else {
-            el.innerHTML = '○ Chưa có server URL. Nhập URL rồi ấn "Lưu".<br><small>Mã phòng tự động: <strong>' + SYNC_ROOM + '</strong></small>';
-            el.style.color = '#888';
-        }
-    }
 
-    async function syncApi(method, data) {
-        const url = localStorage.getItem('syncServerUrl');
-        if (!url) throw new Error('Chưa cấu hình server');
-        const room = localStorage.getItem('syncRoomId');
-        if (!room) throw new Error('Chưa có mã phòng');
-        const res = await fetch(url + '/api/data/' + encodeURIComponent(room), {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: data ? JSON.stringify(data) : undefined
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-    }
-
-    function saveSyncServer() {
-        const url = document.getElementById('syncServerUrl').value.trim().replace(/\/+$/, '');
-        if (!url) { showSyncStatus('Nhập Server URL!', 'red'); return; }
-        localStorage.setItem('syncServerUrl', url);
-        SYNC_SERVER = url;
-        showSyncStatus('Đã lưu. Đang kiểm tra...', 'orange');
-        testSyncConnection();
-    }
-
-    function clearSyncServer() {
-        localStorage.removeItem('syncServerUrl');
-        document.getElementById('syncServerUrl').value = '';
-        showSyncStatus('Đã ngắt kết nối.', 'orange');
-        updateSyncStatusUI();
-    }
-
-    async function testSyncConnection() {
-        try {
-            const res = await fetch(localStorage.getItem('syncServerUrl') + '/health');
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            showSyncStatus('Kết nối server thành công! ✓ Tự động đồng bộ.', 'green');
-            await syncPull();
-        } catch (e) {
-            showSyncStatus('Lỗi: ' + e.message, 'red');
-        }
-        updateSyncStatusUI();
-    }
-
-    async function syncPush() {
-        showSyncStatus('Đang đẩy dữ liệu...', 'orange');
-        try {
-            await syncApi('POST', { products, history, updatedAt: new Date().toISOString() });
-            showSyncStatus('✓ Đã đồng bộ lên server!', 'green');
-        } catch (e) { showSyncStatus('Lỗi: ' + e.message, 'red'); }
+    function syncTest() {
+        showSyncStatus('Đang kiểm tra...', 'orange');
+        fetch(SYNC_SERVER + '/health').then(r => {
+            if (r.ok) {
+                showSyncStatus('✓ Server hoạt động. Đã đồng bộ tự động!', 'green');
+                return syncPull();
+            }
+            showSyncStatus('Lỗi kết nối server!', 'red');
+        }).catch(e => showSyncStatus('Lỗi: ' + e.message, 'red'));
     }
 
     async function syncPull() {
         try {
             const data = await syncApi('GET');
-            if (!data) return;
             if (data.products) { products = data.products; saveProducts(); }
             if (data.history) { history = data.history; localStorage.setItem('history', JSON.stringify(history)); }
             renderTable(); renderExportList(); renderHistory();
         } catch (e) {}
     }
 
-    let syncTimer = null;
-    function scheduleSync() {
-        if (!localStorage.getItem('syncServerUrl')) return;
-        if (syncTimer) clearTimeout(syncTimer);
-        syncTimer = setTimeout(async () => {
-            syncTimer = null;
-            try { await syncApi('POST', { products, history }); } catch (e) {}
-        }, 4000);
-    }
-
-    // Init
-    (function() {
-        const saved = localStorage.getItem('syncServerUrl') || '';
-        if (saved) {
-            document.getElementById('syncServerUrl').value = saved;
-            document.getElementById('syncRoom').value = localStorage.getItem('syncRoomId') || SYNC_ROOM;
-            setTimeout(async () => { try { await syncPull(); } catch (e) {} }, 500);
-        } else {
-            document.getElementById('syncRoom').value = SYNC_ROOM;
-        }
-        updateSyncStatusUI();
-    })();
+    // Auto pull on load, auto push on changes
+    setTimeout(() => syncTest(), 600);
 
     // ---------- NHAP KHO ----------
     function addProduct() {
