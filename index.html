@@ -443,10 +443,7 @@
         if (syncTimer) clearTimeout(syncTimer);
         syncTimer = setTimeout(async () => {
             syncTimer = null;
-            try {
-                await syncApi('POST', { products, history });
-                await syncPull();
-            } catch (e) {}
+            try { await syncApi('POST', { products, history }); } catch (e) {}
         }, 4000);
     }
 
