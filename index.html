@@ -5,29 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản Lý Kho</title>
     <style>
+        :root {
+            --bg: #f0f2f5;
+            --container-bg: #fff;
+            --container-shadow: rgba(0,0,0,0.1);
+            --text: #333;
+            --text-secondary: #888;
+            --text-third: #666;
+            --border: #d9d9d9;
+            --border-light: #e8e8e8;
+            --border-table: #f0f0f0;
+            --th-bg: #fafafa;
+            --th-color: #555;
+            --row-hover: #f5f5f5;
+            --summary-bg: #f6ffed;
+            --summary-border: #b7eb8f;
+            --export-border: #e8e8e8;
+            --export-item-border: #f5f5f5;
+            --export-hover: #e6f4ff;
+            --export-selected: #bae0ff;
+            --detail-color: #888;
+        }
+        .dark-mode {
+            --bg: #1a1a2e;
+            --container-bg: #16213e;
+            --container-shadow: rgba(0,0,0,0.4);
+            --text: #e0e0e0;
+            --text-secondary: #aaa;
+            --text-third: #bbb;
+            --border: #2a2a4a;
+            --border-light: #2a2a4a;
+            --border-table: #2a2a4a;
+            --th-bg: #1a1a2e;
+            --th-color: #ccc;
+            --row-hover: #1a1a35;
+            --summary-bg: #1a3a1a;
+            --summary-border: #2a5a2a;
+            --export-border: #2a2a4a;
+            --export-item-border: #2a2a4a;
+            --export-hover: #1a2a4a;
+            --export-selected: #2a3a5a;
+            --detail-color: #aaa;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, sans-serif;
-            background: #f0f2f5;
+            background: var(--bg);
             padding: 20px;
+            color: var(--text);
+            transition: background 0.3s, color 0.3s;
         }
         .container {
             max-width: 960px;
             margin: 0 auto;
-            background: #fff;
+            background: var(--container-bg);
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px var(--container-shadow);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 4px;
         }
         h1 {
             font-size: 22px;
-            margin-bottom: 4px;
-            color: #333;
+            color: var(--text);
             text-align: center;
         }
+        .toggle-dark {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text);
+            line-height: 1;
+            transition: background 0.2s;
+        }
+        .toggle-dark:hover { background: var(--row-hover); }
         .subtitle {
             text-align: center;
-            color: #888;
+            color: var(--text-secondary);
             font-size: 13px;
             margin-bottom: 20px;
         }
@@ -35,7 +98,7 @@
             display: flex;
             gap: 4px;
             margin-bottom: 20px;
-            border-bottom: 2px solid #e8e8e8;
+            border-bottom: 2px solid var(--border-light);
         }
         .tab {
             padding: 10px 20px;
@@ -43,7 +106,7 @@
             border: none;
             background: none;
             font-size: 14px;
-            color: #666;
+            color: var(--text-third);
             border-bottom: 2px solid transparent;
             margin-bottom: -2px;
             transition: all 0.2s;
@@ -68,10 +131,12 @@
             flex: 1;
             min-width: 120px;
             padding: 10px 12px;
-            border: 1px solid #d9d9d9;
+            border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 14px;
             outline: none;
+            background: var(--container-bg);
+            color: var(--text);
             transition: border-color 0.2s;
         }
         .form-row input:focus,
@@ -117,10 +182,10 @@
         th, td {
             padding: 10px 12px;
             text-align: left;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--border-table);
         }
-        th { background: #fafafa; font-weight: 600; color: #555; }
-        tr:hover { background: #f5f5f5; }
+        th { background: var(--th-bg); font-weight: 600; color: var(--th-color); }
+        tr:hover { background: var(--row-hover); }
         .delete-btn {
             background: none;
             border: none;
@@ -130,17 +195,17 @@
         }
         .empty-msg {
             text-align: center;
-            color: #999;
+            color: var(--text-secondary);
             padding: 30px 0;
         }
         .summary {
             margin-top: 16px;
             padding: 12px 16px;
-            background: #f6ffed;
-            border: 1px solid #b7eb8f;
+            background: var(--summary-bg);
+            border: 1px solid var(--summary-border);
             border-radius: 6px;
             font-size: 14px;
-            color: #333;
+            color: var(--text);
         }
         .low-stock { color: #ff4d4f; font-weight: 600; }
         .export-select {
@@ -149,7 +214,7 @@
         .export-list {
             max-height: 300px;
             overflow-y: auto;
-            border: 1px solid #e8e8e8;
+            border: 1px solid var(--export-border);
             border-radius: 6px;
             margin-bottom: 12px;
         }
@@ -159,15 +224,15 @@
             align-items: center;
             padding: 10px 14px;
             cursor: pointer;
-            border-bottom: 1px solid #f5f5f5;
+            border-bottom: 1px solid var(--export-item-border);
             transition: background 0.15s;
         }
-        .export-list-item:hover { background: #e6f4ff; }
-        .export-list-item.selected { background: #bae0ff; font-weight: 600; }
+        .export-list-item:hover { background: var(--export-hover); }
+        .export-list-item.selected { background: var(--export-selected); font-weight: 600; }
         .export-list-item:last-child { border-bottom: none; }
         .export-list-item .info { flex: 1; }
         .export-list-item .name { font-weight: 500; }
-        .export-list-item .detail { font-size: 12px; color: #888; margin-top: 2px; }
+        .export-list-item .detail { font-size: 12px; color: var(--detail-color); margin-top: 2px; }
         .export-list-item .stock { color: #1677ff; font-weight: 600; }
         .pagination {
             display: flex;
@@ -177,8 +242,9 @@
         }
         .pagination button {
             padding: 6px 14px;
-            border: 1px solid #d9d9d9;
-            background: #fff;
+            border: 1px solid var(--border);
+            background: var(--container-bg);
+            color: var(--text);
             border-radius: 4px;
             cursor: pointer;
             font-size: 13px;
@@ -194,19 +260,25 @@
         }
         .search-box {
             padding: 8px 12px;
-            border: 1px solid #d9d9d9;
+            border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 14px;
             outline: none;
             width: 100%;
             margin-bottom: 12px;
+            background: var(--container-bg);
+            color: var(--text);
         }
         .search-box:focus { border-color: #4096ff; }
+        .dark-mode select option { background: #16213e; color: #e0e0e0; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>Quản Lý Kho</h1>
+    <div class="header-row">
+        <h1>Quản Lý Kho</h1>
+        <button class="toggle-dark" onclick="toggleDark()" id="darkToggle" title="Chuyển chế độ sáng/tối">🌙</button>
+    </div>
     <p class="subtitle">Nhập kho &amp; Xuất kho</p>
 
     <div class="tabs">
@@ -995,6 +1067,18 @@
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
+    }
+
+    // Dark mode toggle
+    function toggleDark() {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('darkMode', isDark ? '1' : '');
+        document.getElementById('darkToggle').textContent = isDark ? '☀️' : '🌙';
+    }
+    if (localStorage.getItem('darkMode') === '1') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('darkToggle').textContent = '☀️';
     }
 
     // Enter key
